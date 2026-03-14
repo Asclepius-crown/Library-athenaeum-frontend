@@ -11,8 +11,8 @@ export default function PayFineModal({ record, onClose, onSuccess }) {
 
   // Generate UPI Intent Link
   // Format: upi://pay?pa=YOUR_VPA&pn=YOUR_NAME&am=AMOUNT&tn=NOTE
-  // Replace 'library@upi' with actual VPA in real app or env
-  const vpa = "amitrajvvs@okaxis"; 
+  // Set VITE_UPI_VPA in your frontend .env file (e.g. VITE_UPI_VPA=yourname@bank)
+  const vpa = import.meta.env.VITE_UPI_VPA || ""; 
   const name = "Athenaeum Library";
   const note = `Fine for ${record.bookTitle}`;
   const amount = record.fineAmount;

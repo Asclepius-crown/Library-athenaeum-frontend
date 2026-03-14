@@ -413,7 +413,7 @@ export default function CatalogPage() {
     if (!passwords.current || !passwords.newPass) { addToast("Please fill out both fields", "error"); return; }
     try {
       setLoadingChangePass(true);
-      await api.post("/change-password", { currentPassword: passwords.current, newPassword: passwords.newPass });
+      await api.post("/auth/change-password", { currentPassword: passwords.current, newPassword: passwords.newPass });
       addToast("Password changed successfully", "success");
       setShowChangePassword(false);
     } catch {

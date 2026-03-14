@@ -19,14 +19,16 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle global errors (like 401 Unauthorized)
+// Response interceptor: on 401, clear the stale token and redirect to login
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Optional: Clear storage and redirect to login if token is invalid
-      // localStorage.removeItem("token");
-      // window.location.href = "/login";
+      // Only clear session if a token was present (i.e. it expired / was invalid)
+      if (localStorage.getItem("token")) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }

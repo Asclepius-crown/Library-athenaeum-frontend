@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import api from "../api/axiosClient";   
 
 const StudentContext = createContext();
@@ -61,12 +61,12 @@ export const StudentProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => {
-    fetchStudents();
-  }, []);
+  // fetchStudents is NOT called automatically on mount.
+  // Only admin components should call fetchStudents() explicitly,
+  // to avoid firing admin-only API requests for unauthenticated or student users.
 
   return (
-    <StudentContext.Provider value={{ students, loading, error, addStudent, updateStudent, deleteStudent, fetchStudentById }}>
+    <StudentContext.Provider value={{ students, loading, error, fetchStudents, addStudent, updateStudent, deleteStudent, fetchStudentById }}>
       {children}
     </StudentContext.Provider>
   );
