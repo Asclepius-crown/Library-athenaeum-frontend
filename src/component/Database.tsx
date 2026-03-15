@@ -1,21 +1,55 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
-import { 
-  BookOpen, Users, AlertCircle, Activity, TrendingUp, 
-  Award, AlertTriangle, Database, Clock, Calendar, Heart, Bookmark
+import {
+  BookOpen, Users, AlertCircle, Activity, TrendingUp,
+  Award, Database, Clock, Calendar, Heart
 } from 'lucide-react';
 import Header from "./Common/Catalog/Header";
 import api from '../api/axiosClient';
 import useToast from "./Common/Catalog/useToast";
 import ToastArea from "./Common/Catalog/ToastArea";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "../context/AuthContext";
+import { DashboardStats } from "../types";
+
+// Types
+interface OverdueBook {
+  _id: string;
+  bookTitle: string;
+  studentName: string;
+  dueDate: string;
+}
+
+interface GenreData {
+  subject: string;
+  A: number;
+  fullMark: number;
+}
+
+interface MyHistoryItem {
+  bookTitle: string;
+  genre?: string;
+  borrowDate: string;
+  returnStatus: string;
+}
+
+interface AdminDashboardViewProps {
+  stats: DashboardStats;
+  overdueBooks: OverdueBook[];
+  loading: boolean;
+  handleDeleteOverdue: (id: string) => void;
+}
+
+interface StudentArchiveViewProps {
+  myHistory: MyHistoryItem[];
+  wishlist: string[];
+}
 
 // --- Admin Dashboard Component (Original) ---
-const AdminDashboardView = ({ stats, overdueBooks, loading, handleDeleteOverdue }) => {
+const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ stats, overdueBooks, loading, handleDeleteOverdue }) => {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
   return (
@@ -65,7 +99,7 @@ const AdminDashboardView = ({ stats, overdueBooks, loading, handleDeleteOverdue 
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={stats.genreStats} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="count" nameKey="_id">
-                    {stats.genreStats?.map((entry, index) => (
+                    {stats.genreStats?.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -123,20 +157,20 @@ const AdminDashboardView = ({ stats, overdueBooks, loading, handleDeleteOverdue 
 };
 
 // --- Student Archive Component (New) ---
-const StudentArchiveView = ({ myHistory, wishlist }) => {
+const StudentArchiveView: React.FC<StudentArchiveViewProps> = ({ myHistory, wishlist }) => {
   // Compute Stats
   const totalRead = myHistory.length;
-  const uniqueGenres = useMemo(() => {
-     const counts = {};
-     myHistory.forEach(h => {
-        // Mock genre since borrowed records might not have it, or use random for demo
-        const g = h.genre || ["Sci-Fi", "History", "Tech", "Fiction", "Bio"][Math.floor(Math.random()*5)]; 
-        counts[g] = (counts[g] || 0) + 1;
-     });
+  const uniqueGenres: GenreData[] = useMemo(() => {
+      const counts: Record<string, number> = {};
+      myHistory.forEach(h => {
+         // Use static default genre if not available
+         const g = h.genre || "Fiction";
+         counts[g] = (counts[g] || 0) + 1;
+      });
      return Object.keys(counts).map(g => ({ subject: g, A: counts[g], fullMark: Math.max(...Object.values(counts)) }));
   }, [myHistory]);
 
-  const recentActivity = [...myHistory].sort((a,b) => new Date(b.borrowDate) - new Date(a.borrowDate)).slice(0, 5);
+  const recentActivity = [...myHistory].sort((a,b) => new Date(b.borrowDate).getTime() - new Date(a.borrowDate).getTime()).slice(0, 5);
 
   return (
     <div className="space-y-8 pb-12">
@@ -152,7 +186,7 @@ const StudentArchiveView = ({ myHistory, wishlist }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <KpiCard title="Books Explored" value={totalRead} icon={<BookOpen size={24} />} color="bg-purple-600" />
         <KpiCard title="Saved Items" value={wishlist.length} icon={<Heart size={24} />} color="bg-pink-600" />
-        <KpiCard title="Current Streak" value="12 Days" icon={<Activity size={24} />} color="bg-green-600" />
+        <KpiCard title="Current Streak" value="0 Days" icon={<Activity size={24} />} color="bg-green-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -206,28 +240,27 @@ const StudentArchiveView = ({ myHistory, wishlist }) => {
   );
 };
 
-
 // --- Main Page ---
-const DatabasePage = () => {
+const DatabasePage: React.FC = () => {
   const navigate = useNavigate();
   const { toasts, addToast } = useToast();
   const { user, studentProfile } = useAuth();
-  
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const profileMenuRef = useRef(null);
-  const [loading, setLoading] = useState(true);
+
+  const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   // Admin State
-  const [overdueBooks, setOverdueBooks] = useState([]);
-  const [stats, setStats] = useState({});
+  const [overdueBooks, setOverdueBooks] = useState<OverdueBook[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({} as DashboardStats);
 
   // Student State
-  const [myHistory, setMyHistory] = useState([]);
+  const [myHistory, setMyHistory] = useState<MyHistoryItem[]>([]);
 
   // Close Profile Menu
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
         setShowProfileMenu(false);
       }
     }
@@ -251,8 +284,8 @@ const DatabasePage = () => {
         const allRecords = res.data.records || res.data;
         // Filter by user ID/Email match (assuming studentId matches login)
         // Adjust this filter logic based on your exact auth data structure
-        const myRecs = allRecords.filter(r => 
-           r.studentId === user.rollNo || r.studentId === user.email || r.studentName === user.name
+        const myRecs = allRecords.filter((r: any) =>
+           r.studentId === user?.rollNo || r.studentId === user?.email || r.studentName === user?.name
         );
         setMyHistory(myRecs);
       }
@@ -267,7 +300,7 @@ const DatabasePage = () => {
     fetchData();
   }, [user, fetchData]);
 
-  const handleDeleteOverdue = async (id) => {
+  const handleDeleteOverdue = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this record?")) return;
     try {
       await api.delete(`/borrowed/${id}`);
@@ -281,8 +314,8 @@ const DatabasePage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-tr from-gray-900 via-gray-800 to-black text-white p-4 md:p-8 font-sans flex flex-col">
       <ToastArea toasts={toasts} />
-      
-      <Header 
+
+      <Header
         navigate={navigate}
         showProfileMenu={showProfileMenu}
         setShowProfileMenu={setShowProfileMenu}
@@ -291,16 +324,16 @@ const DatabasePage = () => {
 
       <div className="max-w-7xl mx-auto w-full">
          {user?.role === 'admin' ? (
-             <AdminDashboardView 
-                stats={stats} 
-                overdueBooks={overdueBooks} 
-                loading={loading} 
-                handleDeleteOverdue={handleDeleteOverdue} 
+             <AdminDashboardView
+                stats={stats}
+                overdueBooks={overdueBooks}
+                loading={loading}
+                handleDeleteOverdue={handleDeleteOverdue}
              />
          ) : (
-             <StudentArchiveView 
-                myHistory={myHistory} 
-                wishlist={studentProfile?.wishlist || []} 
+             <StudentArchiveView
+                myHistory={myHistory}
+                wishlist={studentProfile?.wishlist || []}
              />
          )}
       </div>
@@ -318,29 +351,31 @@ const DatabasePage = () => {
 };
 
 // Sub-components
-const KpiCard = ({ title, value, icon, color, alert }) => (
+interface KpiCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ReactElement;
+  color: string;
+  alert?: boolean;
+}
+
+const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon, color, alert }) => (
   <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg relative overflow-hidden group hover:border-gray-600 transition">
     <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity ${alert ? 'text-red-500' : 'text-white'}`}>
-      {React.cloneElement(icon, { size: 64 })}
+      {React.cloneElement(icon, { size: 64 } as any)}
     </div>
     <div className="relative z-10">
       <div className={`w-12 h-12 rounded-lg ${color} flex items-center justify-center mb-4 shadow-lg`}>
-        {React.cloneElement(icon, { className: "text-white" })}
+        {React.cloneElement(icon, { className: "text-white" } as any)}
       </div>
       <p className="text-gray-400 text-sm font-medium uppercase tracking-wide">{title}</p>
-      <p className="text-3xl font-bold text-white mt-1">{value || 0}</p>
+      <p className="text-3xl font-bold text-white mt-1">{typeof value === 'number' ? (value || 0) : value}</p>
     </div>
   </div>
 );
 
-const HealthItem = ({ label, value, color }) => (
-  <div className="bg-gray-700/30 rounded-lg p-4 border border-gray-700">
-    <p className="text-gray-400 text-xs uppercase mb-1">{label}</p>
-    <p className={`text-2xl font-bold ${color}`}>{value || 0}</p>
-  </div>
-);
 
-const LoadingPlaceholder = () => (
+const LoadingPlaceholder: React.FC = () => (
   <div className="w-full h-full flex items-center justify-center text-gray-600 animate-pulse">
     Loading Visualization...
   </div>

@@ -6,19 +6,20 @@ import logo from "../assets/logo.jpg";
 import Header from "./Common/Catalog/Header";
 import api from "../api/axiosClient";
 import toast from "react-hot-toast";
+import { Book } from "../types";
 
-// Focus trap
-const useFocusTrap = (ref, active) => {
+// Focus trap hook
+const useFocusTrap = (ref: React.RefObject<HTMLElement>, active: boolean) => {
   useEffect(() => {
     if (!active || !ref.current) return;
     const selectors =
       'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
     const focusable = Array.from(ref.current.querySelectorAll(selectors));
-    if (focusable.length) focusable[0].focus();
-    const handleKeyDown = (e) => {
+    if (focusable.length) (focusable[0] as HTMLElement).focus();
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
+      const first = focusable[0] as HTMLElement;
+      const last = focusable[focusable.length - 1] as HTMLElement;
       if (e.shiftKey) {
         if (document.activeElement === first) {
           e.preventDefault();
@@ -36,26 +37,56 @@ const useFocusTrap = (ref, active) => {
   }, [ref, active]);
 };
 
-export default function LandingPage() {
+interface FormData {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+interface Errors {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  general?: string;
+}
+
+interface TouchedFields {
+  name?: boolean;
+  email?: boolean;
+  password?: boolean;
+  confirmPassword?: boolean;
+}
+
+export default function LandingPage(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, login, register } = useAuth();
 
   // === State ===
-  const [activeForm, setActiveForm] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState({ password: false, confirmPassword: false });
-  const [formData, setFormData] = useState({ name: "", email: "", password: "", confirmPassword: "" });
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
-  
-  const [featuredBook, setFeaturedBook] = useState(null);
+  const [activeForm, setActiveForm] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<{ password: boolean; confirmPassword: boolean }>({
+    password: false,
+    confirmPassword: false
+  });
+  const [formData, setFormData] = useState<FormData>({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: ""
+  });
+  const [errors, setErrors] = useState<Errors>({});
+  const [touched, setTouched] = useState<TouchedFields>({});
+
+  const [featuredBook, setFeaturedBook] = useState<Book | null>(null);
 
   // Shared Header State
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const profileMenuRef = useRef(null);
-  const modalRef = useRef(null);
-  
+  const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
   useFocusTrap(modalRef, !!activeForm);
 
   const closeModal = useCallback(() => {
@@ -74,7 +105,7 @@ export default function LandingPage() {
   }, [location.pathname]);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (activeForm) closeModal();
         if (showProfileMenu) setShowProfileMenu(false);
@@ -102,8 +133,8 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
         setShowProfileMenu(false);
       }
     }
@@ -112,17 +143,17 @@ export default function LandingPage() {
   }, []);
 
   // === Handlers ===
-  const overlayClickClose = (e, closeFn) => {
+  const overlayClickClose = (e: React.MouseEvent, closeFn: () => void) => {
     if (e.target === e.currentTarget) closeFn();
   };
-  
-  const handleInputChange = (e) => {
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((fd) => ({ ...fd, [name]: value }));
-    if (touched[name]) validateField(name, value);
+    if (touched[name as keyof TouchedFields]) validateField(name, value);
   };
 
-  const validateField = (name, value) => {
+  const validateField = (name: string, value: string): boolean => {
     let error = "";
     switch (name) {
       case "email":
@@ -147,9 +178,9 @@ export default function LandingPage() {
     return error === "";
   };
 
-  const validateForm = () => {
+  const validateForm = (): boolean => {
     let valid = true;
-    const toValidate = ["email", "password"];
+    const toValidate: (keyof FormData)[] = ["email", "password"];
     if (activeForm === "register") toValidate.push("name", "confirmPassword");
     toValidate.forEach((field) => {
       if (!validateField(field, formData[field])) valid = false;
@@ -157,7 +188,7 @@ export default function LandingPage() {
     return valid;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
       setTouched({ email: true, password: true, name: true, confirmPassword: true });
@@ -172,7 +203,7 @@ export default function LandingPage() {
     }
     setLoading(false);
     if (result.success) {
-      toast.success(activeForm === "login" ? `Welcome back, ${result.user.name}!` : `Welcome, ${result.user.name}!`);
+      toast.success(activeForm === "login" ? `Welcome back, ${result.user?.name}!` : `Welcome, ${result.user?.name}!`);
       setActiveForm(null);
       navigate("/");
     } else {
@@ -191,7 +222,7 @@ export default function LandingPage() {
       {/* Header */}
       {isAuthenticated ? (
         <div className="relative z-50 px-6 py-4 bg-black/20 backdrop-blur-md border-b border-white/5">
-          <Header 
+          <Header
             navigate={navigate}
             showProfileMenu={showProfileMenu}
             setShowProfileMenu={setShowProfileMenu}
@@ -214,7 +245,7 @@ export default function LandingPage() {
       {/* Main Content */}
       <main id="main-content" className="relative z-10 flex-grow flex flex-col justify-center">
         <div className="max-w-7xl mx-auto px-6 py-12 lg:py-20 grid lg:grid-cols-2 gap-12 items-center">
-          
+
           {/* Left Column: Text */}
           <div className="space-y-8 text-center lg:text-left">
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight">
@@ -226,7 +257,7 @@ export default function LandingPage() {
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
               Access thousands of books, digital resources, and manage your reading journey with our modern library management system.
             </p>
-            
+
             {isAuthenticated ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 max-w-lg mx-auto lg:mx-0">
                 <button onClick={() => navigate("/catalog")} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition flex flex-col items-center lg:items-start gap-2 group">
@@ -258,9 +289,9 @@ export default function LandingPage() {
           {/* Right Column: Hero Image */}
           <div className="relative hidden lg:block">
             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/20 to-cyan-500/20 rounded-3xl blur-3xl transform -rotate-6"></div>
-            <img 
-              src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&q=80&w=1000" 
-              alt="Library Interior" 
+            <img
+              src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&q=80&w=1000"
+              alt="Library Interior"
               className="relative rounded-3xl shadow-2xl border border-white/10 transform transition hover:scale-[1.02] duration-500 object-cover h-[500px] w-full"
             />
           </div>
@@ -276,10 +307,10 @@ export default function LandingPage() {
                </h2>
                <div className="h-px bg-gradient-to-r from-transparent via-indigo-500 to-transparent flex-grow"></div>
             </div>
-            
+
             <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-2xl p-8 flex flex-col md:flex-row gap-8 items-center shadow-2xl relative overflow-hidden group">
                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
-               
+
                {/* Image */}
                <div className="w-48 h-72 flex-shrink-0 shadow-2xl rounded-lg overflow-hidden border border-white/5 transform group-hover:scale-105 transition duration-500">
                   {featuredBook.imageUrl ? (
@@ -296,18 +327,18 @@ export default function LandingPage() {
                   <p className="text-gray-400 mb-6 leading-relaxed max-w-2xl">
                     {String(featuredBook.description || "Dive into this week's featured selection. A masterpiece waiting to be explored.")}
                   </p>
-                  
+
                   <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                     <span className="px-3 py-1 bg-white/5 rounded-full text-xs font-mono border border-white/10 text-gray-400">
                       {String(featuredBook.genre || "General")}
                     </span>
                     <span className="px-3 py-1 bg-white/5 rounded-full text-xs font-mono border border-white/10 text-gray-400">
-                      {String(featuredBook.publishedCount || "N/A")}
+                      {String((featuredBook as any).publishedCount || "N/A")}
                     </span>
                   </div>
 
                   <div className="mt-8">
-                    <button 
+                    <button
                       onClick={() => navigate('/catalog')}
                       className="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                     >
@@ -333,11 +364,11 @@ export default function LandingPage() {
       </footer>
 
       {/* Login/Register Modal */}
-      {["login", "register"].includes(activeForm) && (
+      {["login", "register"].includes(activeForm || '') && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => overlayClickClose(e, closeModal)}>
           <div ref={modalRef} className="bg-[#111] border border-white/10 w-full max-w-md rounded-2xl shadow-2xl p-8 relative animate-scale-in">
             <button onClick={closeModal} className="absolute top-4 right-4 text-gray-500 hover:text-white transition text-xl">&times;</button>
-            
+
             <h2 className="text-2xl font-bold text-center mb-2">
               {activeForm === "login" ? "Welcome Back" : "Create Account"}
             </h2>
@@ -355,7 +386,7 @@ export default function LandingPage() {
                   {errors.name && <p className="text-red-400 text-xs mt-1 ml-1">{errors.name}</p>}
                 </div>
               )}
-              
+
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Email</label>
                 <input name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="name@example.com" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 focus:outline-none transition" />
@@ -366,7 +397,7 @@ export default function LandingPage() {
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Password</label>
                 <div className="relative">
                   <input name="password" type={showPassword.password ? "text" : "password"} value={formData.password} onChange={handleInputChange} placeholder="••••••••" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 focus:outline-none transition" />
-                  <button type="button" onClick={() => setShowPassword(p => ({...p, password: !p.password}))} className="absolute right-3 top-3 text-gray-400 hover:text-white">
+                  <button type="button" onClick={() => setShowPassword(p => ({...p, password: !p.password}))} className="absolute right-3 top-3 text-gray-400 hover:text-white" aria-label={showPassword.password ? "Hide password" : "Show password"}>
                     {showPassword.password ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
@@ -378,7 +409,7 @@ export default function LandingPage() {
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Confirm Password</label>
                   <div className="relative">
                     <input name="confirmPassword" type={showPassword.confirmPassword ? "text" : "password"} value={formData.confirmPassword} onChange={handleInputChange} placeholder="••••••••" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-indigo-500 focus:outline-none transition" />
-                    <button type="button" onClick={() => setShowPassword(p => ({...p, confirmPassword: !p.confirmPassword}))} className="absolute right-3 top-3 text-gray-400 hover:text-white">
+                    <button type="button" onClick={() => setShowPassword(p => ({...p, confirmPassword: !p.confirmPassword}))} className="absolute right-3 top-3 text-gray-400 hover:text-white" aria-label={showPassword.confirmPassword ? "Hide confirm password" : "Show confirm password"}>
                       {showPassword.confirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>

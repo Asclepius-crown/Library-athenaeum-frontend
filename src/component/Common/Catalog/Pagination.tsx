@@ -1,9 +1,17 @@
-// Pagination.jsx
+// Pagination.tsx
+import React, { Dispatch, SetStateAction } from 'react';
+
+interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  setCurrentPage: Dispatch<SetStateAction<number>>;
+}
+
 export default function Pagination({
   currentPage,
   totalPages,
   setCurrentPage,
-}) {
+}: PaginationProps) {
   return (
     <div className="flex justify-center items-center gap-2 mt-6">
       <button

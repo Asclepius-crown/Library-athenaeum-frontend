@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, BookOpen, Calendar, Box, Type, Clock, Star, MessageSquare } from "lucide-react";
 import api from "../../../api/axiosClient";
-import { useAuth } from "../../AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 
 export default function BookDetailsModal({ book, onClose, onBorrow, onReserve }) {
   const { user, studentProfile } = useAuth();

@@ -5,34 +5,67 @@ import Header from "../Common/Catalog/Header";
 import useToast from "../Common/Catalog/useToast";
 import ToastArea from "../Common/Catalog/ToastArea";
 import api from "../../api/axiosClient";
-import { User, Shield, Key, BookOpen, GraduationCap, Building, Calendar, AlertCircle, Clock, Banknote, Megaphone } from 'lucide-react';
+import { User, BorrowedRecord } from "../../types";
+import type { StudentProfile } from "../../types";
+import { CURRENCY_SYMBOL } from "../../constants";
+import { Shield, Key, BookOpen, GraduationCap, Building, Calendar, AlertCircle, Clock, Banknote, Megaphone } from 'lucide-react';
 
-const StudentProfile = () => {
+interface ProfileData {
+  user: User;
+  studentProfile: StudentProfile | null;
+}
+
+interface BorrowStats {
+  total: number;
+  overdue: number;
+}
+
+interface Passwords {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+interface Announcement {
+  _id: string;
+  title: string;
+  content: string;
+  author: string;
+  createdAt: string;
+}
+
+interface Reservation {
+  _id: string;
+  bookId?: { title: string };
+  createdAt: string;
+}
+
+const StudentProfile: React.FC = () => {
   const { user: contextUser } = useAuth();
   const navigate = useNavigate();
   const { toasts, addToast } = useToast();
-  
+
   // Header State
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const profileMenuRef = useRef(null);
+  const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // Profile Data State
-  const [profileData, setProfileData] = useState(null); // { user, studentProfile }
-  const [borrowStats, setBorrowStats] = useState({ total: 0, overdue: 0 });
-  const [borrowedBooks, setBorrowedBooks] = useState([]); // List of current borrowings
-  const [reservations, setReservations] = useState([]);
-  const [announcements, setAnnouncements] = useState([]); // New state
-  const [totalFines, setTotalFines] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [borrowStats, setBorrowStats] = useState<BorrowStats>({ total: 0, overdue: 0 });
+  const [borrowedBooks, setBorrowedBooks] = useState<BorrowedRecord[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [totalFines, setTotalFines] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
 
   // Password State
-  const [passwords, setPasswords] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwords, setPasswords] = useState<Passwords>({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [passwordLoading, setPasswordLoading] = useState<boolean>(false);
 
   // Close header menu on click outside
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
         setShowProfileMenu(false);
       }
     }
@@ -46,7 +79,7 @@ const StudentProfile = () => {
       try {
         // 1. Fetch Extended User Profile
         const meRes = await api.get('/auth/me');
-        setProfileData(meRes.data); // { user, studentProfile }
+        setProfileData(meRes.data);
 
         // 2. Fetch Announcements
         const annRes = await api.get('/announcements');
@@ -71,8 +104,8 @@ const StudentProfile = () => {
 
                 // Calculate Fines
                 const allRecords = allRecordsRes.data.records || [];
-                const unpaid = allRecords.filter(r => r.fineAmount > 0 && !r.isFinePaid);
-                const total = unpaid.reduce((acc, curr) => acc + curr.fineAmount, 0);
+                const unpaid = allRecords.filter((r: BorrowedRecord) => r.fineAmount && Number(r.fineAmount) > 0 && !r.isFinePaid);
+                const total = unpaid.reduce((acc: number, curr: BorrowedRecord) => acc + Number(curr.fineAmount), 0);
                 setTotalFines(total);
 
             } catch {
@@ -89,7 +122,9 @@ const StudentProfile = () => {
     fetchData();
   }, [addToast]);
 
-  const handleChangePassword = async (e) => {
+  const { changePassword } = useAuth();
+
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwords.newPassword !== passwords.confirmPassword) {
       addToast("New passwords do not match", "error");
@@ -101,21 +136,17 @@ const StudentProfile = () => {
     }
 
     setPasswordLoading(true);
-    try {
-      await api.post("/auth/change-password", {
-        currentPassword: passwords.currentPassword,
-        newPassword: passwords.newPassword,
-      });
+    const res = await changePassword(passwords.currentPassword, passwords.newPassword);
+    if (res.success) {
       addToast("Password changed successfully", "success");
       setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    } catch (err) {
-      addToast(err.response?.data?.message || "Failed to change password", "error");
-    } finally {
-      setPasswordLoading(false);
+    } else {
+      addToast(res.message || "Failed to change password", "error");
     }
+    setPasswordLoading(false);
   };
-  
-  const handleCancelReservation = async (id) => {
+
+  const handleCancelReservation = async (id: string) => {
       if(!window.confirm("Cancel this reservation?")) return;
       try {
           await api.patch(`/reservations/${id}/cancel`);
@@ -136,11 +167,11 @@ const StudentProfile = () => {
 
   const { user, studentProfile } = profileData || { user: contextUser, studentProfile: null };
 
-  const getDueStatus = (dueDateStr) => {
+  const getDueStatus = (dueDateStr: string) => {
     const today = new Date();
     const due = new Date(dueDateStr);
-    const diffTime = due - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) return { label: `Overdue by ${Math.abs(diffDays)} days`, color: "text-red-400 border-red-500/30 bg-red-500/10" };
     if (diffDays === 0) return { label: "Due Today", color: "text-yellow-400 border-yellow-500/30 bg-yellow-500/10" };
@@ -151,7 +182,7 @@ const StudentProfile = () => {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-indigo-500 selection:text-white pb-12">
       <ToastArea toasts={toasts} />
-      
+
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-900/10 rounded-full blur-[100px]"></div>
@@ -159,7 +190,7 @@ const StudentProfile = () => {
       </div>
 
       <div className="relative z-10 p-4 sm:p-8">
-        <Header 
+        <Header
             navigate={navigate}
             showProfileMenu={showProfileMenu}
             setShowProfileMenu={setShowProfileMenu}
@@ -167,14 +198,14 @@ const StudentProfile = () => {
         />
 
         <main id="main-content" className="max-w-6xl mx-auto mt-8 animate-fade-in-up">
-            
+
             {/* Header Section */}
             <div className="flex flex-col md:flex-row gap-8 items-start mb-10">
                 {/* Avatar */}
                 <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-indigo-600 to-cyan-600 flex items-center justify-center text-3xl sm:text-5xl font-bold shadow-2xl border-4 border-black/50">
                     {user?.name?.charAt(0).toUpperCase()}
                 </div>
-                
+
                 {/* Basic Info */}
                 <div className="flex-grow pt-2">
                     <h1 className="text-3xl sm:text-4xl font-bold mb-2">{user?.name}</h1>
@@ -207,7 +238,7 @@ const StudentProfile = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
+
                 {/* Left Column: Academic/Detailed Info */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Announcements Section */}
@@ -239,7 +270,7 @@ const StudentProfile = () => {
                             <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-cyan-400">
                                 <GraduationCap size={24} /> Academic Information
                             </h2>
-                            
+
                             {studentProfile ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div className="bg-black/20 p-4 rounded-xl">
@@ -278,7 +309,7 @@ const StudentProfile = () => {
                             <div className="flex items-center justify-between bg-black/40 p-5 rounded-xl border border-red-500/10">
                                 <div>
                                     <p className="text-gray-400 text-sm">Total Unpaid Fines</p>
-                                    <p className="text-3xl font-bold text-white mt-1">₹{totalFines}</p>
+                                    <p className="text-3xl font-bold text-white mt-1">{CURRENCY_SYMBOL}{totalFines}</p>
                                     <p className="text-xs text-red-400 mt-2">Please pay at the library desk to avoid restrictions.</p>
                                 </div>
                                 <div className="p-3 bg-red-500/20 rounded-full">
@@ -293,24 +324,24 @@ const StudentProfile = () => {
                         <div className="bg-gray-900/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl">
                              <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-amber-400">
                                 <Clock size={24} /> Active Reservations
-                            </h2>
-                            <div className="space-y-4">
-                                {reservations.map((res) => (
-                                    <div key={String(res._id)} className="bg-black/20 p-4 rounded-xl flex justify-between items-center border border-white/5">
-                                        <div>
-                                            <h3 className="font-bold text-white">{res.bookId?.title || "Unknown Book"}</h3>
-                                            <p className="text-xs text-gray-500">Reserved on: {new Date(res.createdAt).toLocaleDateString()}</p>
-                                        </div>
-                                        <button 
-                                            onClick={() => handleCancelReservation(res._id)}
-                                            className="px-3 py-1 bg-red-600/20 text-red-400 text-xs rounded hover:bg-red-600/30 transition"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                             </h2>
+                             <div className="space-y-4">
+                                 {reservations.map((res) => (
+                                     <div key={String(res._id)} className="bg-black/20 p-4 rounded-xl flex justify-between items-center border border-white/5">
+                                         <div>
+                                             <h3 className="font-bold text-white">{res.bookId?.title || "Unknown Book"}</h3>
+                                             <p className="text-xs text-gray-500">Reserved on: {new Date(res.createdAt).toLocaleDateString()}</p>
+                                         </div>
+                                         <button
+                                             onClick={() => handleCancelReservation(res._id)}
+                                             className="px-3 py-1 bg-red-600/20 text-red-400 text-xs rounded hover:bg-red-600/30 transition"
+                                         >
+                                             Cancel
+                                         </button>
+                                     </div>
+                                 ))}
+                             </div>
+                         </div>
                     )}
 
                     {/* Current Borrowings Section */}
@@ -328,9 +359,9 @@ const StudentProfile = () => {
                                                                         <div key={String(book._id)} className="bg-black/20 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-white/5 hover:border-white/10 transition">
                                                                             <div>                                                    <h3 className="font-bold text-white text-lg">{book.bookTitle}</h3>
                                                     <p className="text-gray-500 text-sm">Borrowed: {new Date(book.borrowDate).toLocaleDateString()}</p>
-                                                    {book.fineAmount > 0 && !book.isFinePaid && (
+                                                     {book.fineAmount && Number(book.fineAmount) > 0 && !book.isFinePaid && (
                                                        <span className="inline-block mt-1 px-2 py-0.5 bg-red-500/20 text-red-300 text-xs rounded border border-red-500/30">
-                                                           Fine: ₹{book.fineAmount}
+                                                            Fine: {CURRENCY_SYMBOL}{book.fineAmount}
                                                        </span>
                                                     )}
                                                 </div>
@@ -358,20 +389,20 @@ const StudentProfile = () => {
                         <div className="bg-gray-900/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 shadow-xl">
                              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-purple-400">
                                 <Shield size={24} /> Administrator Privileges
-                            </h2>
-                            <p className="text-gray-400 leading-relaxed">
-                                You have full access to manage the library catalog, user database, and borrowing records. 
-                                Use the dashboard to oversee library operations.
-                            </p>
-                            <div className="mt-6 flex gap-4">
-                                <button onClick={() => navigate('/admin-dashboard')} className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition shadow-lg shadow-purple-500/20 font-medium">
-                                    Go to Dashboard
-                                </button>
-                                <button onClick={() => navigate('/catalog')} className="px-5 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition font-medium">
-                                    Manage Books
-                                </button>
-                            </div>
-                        </div>
+                             </h2>
+                             <p className="text-gray-400 leading-relaxed">
+                                 You have full access to manage the library catalog, user database, and borrowing records.
+                                 Use the dashboard to oversee library operations.
+                             </p>
+                             <div className="mt-6 flex gap-4">
+                                 <button onClick={() => navigate('/admin-dashboard')} className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition shadow-lg shadow-purple-500/20 font-medium">
+                                     Go to Dashboard
+                                 </button>
+                                 <button onClick={() => navigate('/catalog')} className="px-5 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition font-medium">
+                                     Manage Books
+                                 </button>
+                             </div>
+                         </div>
                     )}
                 </div>
 
@@ -381,11 +412,11 @@ const StudentProfile = () => {
                         <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-indigo-400">
                             <Key size={20} /> Security Settings
                         </h2>
-                        
+
                         <form onSubmit={handleChangePassword} className="space-y-4">
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Current Password</label>
-                                <input 
+                                <input
                                     type="password"
                                     className="w-full bg-black/30 border border-gray-700 rounded-lg p-3 text-white focus:border-indigo-500 focus:outline-none transition text-sm"
                                     placeholder="••••••••"
@@ -397,7 +428,7 @@ const StudentProfile = () => {
 
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">New Password</label>
-                                <input 
+                                <input
                                     type="password"
                                     className="w-full bg-black/30 border border-gray-700 rounded-lg p-3 text-white focus:border-indigo-500 focus:outline-none transition text-sm"
                                     placeholder="••••••••"
@@ -409,7 +440,7 @@ const StudentProfile = () => {
 
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Confirm New Password</label>
-                                <input 
+                                <input
                                     type="password"
                                     className="w-full bg-black/30 border border-gray-700 rounded-lg p-3 text-white focus:border-indigo-500 focus:outline-none transition text-sm"
                                     placeholder="••••••••"
@@ -419,8 +450,8 @@ const StudentProfile = () => {
                                 />
                             </div>
 
-                            <button 
-                                type="submit" 
+                            <button
+                                type="submit"
                                 disabled={passwordLoading}
                                 className="w-full py-3 rounded-lg font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg shadow-indigo-500/20 mt-2"
                             >
@@ -439,5 +470,3 @@ const StudentProfile = () => {
 };
 
 export default StudentProfile;
-
-

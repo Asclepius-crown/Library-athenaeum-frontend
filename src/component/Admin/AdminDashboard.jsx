@@ -3,7 +3,7 @@ import api from "../../api/axiosClient";
 import useToast from "../Common/Catalog/useToast";
 import Header from "../Common/Catalog/Header";
 import ToastArea from "../Common/Catalog/ToastArea";
-import { useAuth } from "../AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { 
   Book, Users, BookOpen, AlertCircle, PlusCircle, Trash2
@@ -323,47 +323,75 @@ export default function AdminDashboard() {
             </button>
             <h2 className="text-xl font-bold text-white mb-6">Add New User</h2>
             <form onSubmit={handleAddUser} className="space-y-4">
-              <input 
-                type="text" placeholder="Full Name" required
-                value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})}
-                className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-              />
-              <input 
-                type="email" placeholder="Email Address" required
-                value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})}
-                className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-              />
-              <input 
-                type="password" placeholder="Password" required
-                value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})}
-                className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-              />
-              <select 
-                value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}
-                className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-              >
-                <option value="student">Student</option>
-                <option value="admin">Admin</option>
-              </select>
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
+                <input 
+                  id="name"
+                  type="text" placeholder="Full Name" required
+                  value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})}
+                  className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">Email Address</label>
+                <input 
+                  id="email"
+                  type="email" placeholder="Email Address" required
+                  value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})}
+                  className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                <input 
+                  id="password"
+                  type="password" placeholder="Password" required
+                  value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})}
+                  className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-300 mb-1">Role</label>
+                <select 
+                  id="role"
+                  value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}
+                  className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                >
+                  <option value="student">Student</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
 
               {newUser.role === 'student' && (
                 <div className="space-y-4 border-t border-gray-700/50 pt-4">
                   <p className="text-sm text-cyan-400 font-semibold">Student Details (Optional)</p>
-                  <input 
-                    type="text" placeholder="Roll Number"
-                    value={newUser.rollNo} onChange={e => setNewUser({...newUser, rollNo: e.target.value})}
-                    className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                  />
-                  <input 
-                    type="text" placeholder="Branch"
-                    value={newUser.branch} onChange={e => setNewUser({...newUser, branch: e.target.value})}
-                    className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                  />
-                  <input 
-                    type="text" placeholder="Year"
-                    value={newUser.year} onChange={e => setNewUser({...newUser, year: e.target.value})}
-                    className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                  />
+                  <div>
+                    <label htmlFor="rollNo" className="block text-sm font-medium text-gray-300 mb-1">Roll Number</label>
+                    <input 
+                      id="rollNo"
+                      type="text" placeholder="Roll Number"
+                      value={newUser.rollNo} onChange={e => setNewUser({...newUser, rollNo: e.target.value})}
+                      className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="branch" className="block text-sm font-medium text-gray-300 mb-1">Branch</label>
+                    <input 
+                      id="branch"
+                      type="text" placeholder="Branch"
+                      value={newUser.branch} onChange={e => setNewUser({...newUser, branch: e.target.value})}
+                      className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="year" className="block text-sm font-medium text-gray-300 mb-1">Year</label>
+                    <input 
+                      id="year"
+                      type="text" placeholder="Year"
+                      value={newUser.year} onChange={e => setNewUser({...newUser, year: e.target.value})}
+                      className="w-full bg-black/40 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                    />
+                  </div>
                 </div>
               )}
 

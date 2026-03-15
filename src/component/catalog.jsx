@@ -15,7 +15,7 @@ import BulkImportModal from "./Common/Catalog/BulkImportModal";
 import ChangePasswordModal from "./Common/Catalog/ChangePassword";
 import ToastArea from "./Common/Catalog/ToastArea";
 import ManageCopiesModal from "./Common/Catalog/ManageCopiesModal";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "../context/AuthContext";
 import api from "../api/axiosClient";
 
 const genres = [

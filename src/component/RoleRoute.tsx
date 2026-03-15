@@ -1,9 +1,13 @@
-// src/component/RoleRoute.jsx
-import React from "react";
+// src/component/RoleRoute.tsx
+import React, { PropsWithChildren } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function RoleRoute({ children, allowedRoles }) {
+interface RoleRouteProps extends PropsWithChildren {
+  allowedRoles: string[];
+}
+
+export default function RoleRoute({ children, allowedRoles }: RoleRouteProps): JSX.Element {
   const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
@@ -15,16 +19,16 @@ export default function RoleRoute({ children, allowedRoles }) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (!allowedRoles.includes(user?.role)) {
+  if (!allowedRoles.includes(user?.role || '')) {
     console.warn(`Frontend: Unauthorized route access attempt by ${user?.role || 'unknown'} user`);
     // Instead of redirect, show forbidden component
     return <ForbiddenPage />;
   }
 
-  return children;
+  return <>{children}</>;
 }
 
-function ForbiddenPage() {
+function ForbiddenPage(): JSX.Element {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white">
       <div className="text-center max-w-md mx-auto p-8 bg-gray-900/80 backdrop-blur-md border border-red-500/20 rounded-2xl shadow-2xl">

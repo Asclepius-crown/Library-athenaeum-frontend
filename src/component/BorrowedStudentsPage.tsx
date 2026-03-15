@@ -1,28 +1,61 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  PieChart, Pie, Cell 
-} from 'recharts';
-import { 
-  Search, Filter, Download, Trash2, Pencil, CheckCircle, 
-  AlertCircle, Clock, DollarSign, BookOpen, RefreshCw, Backpack, Calendar,
-  Lock, Unlock 
+import {
+  Trash2, Pencil, CheckCircle,
+  AlertCircle, Clock, DollarSign, BookOpen, RefreshCw, Backpack,
+  Lock, Unlock
 } from 'lucide-react';
 import { differenceInDays, differenceInHours } from "date-fns";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/axiosClient";
-import Papa from "papaparse";
 import Header from "./Common/Catalog/Header";
 import PayFineModal from "./Admin/PayFineModal";
+import { BorrowedRecord } from "../types";
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ReactElement;
+  color: string;
+  subtext?: string;
+}
+
+interface BadgeProps {
+  children: React.ReactNode;
+  type: string;
+}
+
+interface CountdownTimerProps {
+  dueDate: string;
+}
+
+interface ActiveLoanCardProps {
+  loan: BorrowedRecord;
+}
+
+interface FineTicketProps {
+  loan: BorrowedRecord;
+  onPay: (loan: BorrowedRecord) => void;
+}
+
+interface StudentBackpackViewProps {
+  loans: BorrowedRecord[];
+  loading: boolean;
+  onPay: (loan: BorrowedRecord) => void;
+  onRefresh: () => void;
+}
+
+interface ToastState {
+  msg: string;
+  type: 'success' | 'error';
+}
 
 // --- Utility Components ---
 
-
-const StatCard = ({ title, value, icon, color, subtext }) => (
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtext }) => (
   <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg relative overflow-hidden group hover:border-gray-600 transition">
     <div className={`absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-transform group-hover:scale-110 ${color}`}>
-      {React.cloneElement(icon, { size: 100 })}
+      {React.cloneElement(icon, { size: 100 } as any)}
     </div>
     <div className="relative z-10">
       <div className={`w-12 h-12 rounded-lg ${color.replace('text-', 'bg-').replace('500', '600')} bg-opacity-20 flex items-center justify-center mb-4 text-white shadow-inner`}>
@@ -35,7 +68,7 @@ const StatCard = ({ title, value, icon, color, subtext }) => (
   </div>
 );
 
-const Badge = ({ children, type }) => {
+const Badge: React.FC<BadgeProps> = ({ children, type }) => {
   const styles = {
     Overdue: "bg-red-900/40 text-red-300 border-red-700/50",
     Returned: "bg-green-900/40 text-green-300 border-green-700/50",
@@ -44,7 +77,7 @@ const Badge = ({ children, type }) => {
     Unpaid: "bg-orange-900/40 text-orange-300 border-orange-700/50"
   };
   return (
-    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[type] || 'bg-gray-800 text-gray-300'}`}>
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[type as keyof typeof styles] || 'bg-gray-800 text-gray-300'}`}>
       {children}
     </span>
   );
@@ -52,9 +85,9 @@ const Badge = ({ children, type }) => {
 
 // --- Student Specific Components ---
 
-const CountdownTimer = ({ dueDate }) => {
-  const [timeLeft, setTimeLeft] = useState("");
-  const [urgency, setUrgency] = useState("safe"); // safe, warning, danger
+const CountdownTimer: React.FC<CountdownTimerProps> = ({ dueDate }) => {
+  const [timeLeft, setTimeLeft] = useState<string>("");
+  const [urgency, setUrgency] = useState<string>("safe"); // safe, warning, danger
 
   useEffect(() => {
     const calculateTime = () => {
@@ -89,30 +122,30 @@ const CountdownTimer = ({ dueDate }) => {
   };
 
   return (
-    <div className={`px-3 py-1 rounded-md border text-xs font-mono font-bold uppercase tracking-wider ${colors[urgency]}`}>
+    <div className={`px-3 py-1 rounded-md border text-xs font-mono font-bold uppercase tracking-wider ${colors[urgency as keyof typeof colors]}`}>
       {timeLeft}
     </div>
   );
 };
 
-const ActiveLoanCard = ({ loan }) => (
+const ActiveLoanCard: React.FC<ActiveLoanCardProps> = ({ loan }) => (
   <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden hover:border-gray-500 transition-all group">
     <div className="p-5 flex gap-4">
       {/* Book Cover Placeholder */}
       <div className="w-16 h-24 bg-gray-900 rounded border border-gray-700 flex items-center justify-center text-gray-600 shrink-0">
          <BookOpen size={24} />
       </div>
-      
+
       <div className="flex-1 min-w-0">
         <h3 className="text-lg font-bold text-white truncate group-hover:text-cyan-400 transition-colors">{loan.bookTitle}</h3>
         <p className="text-gray-400 text-sm mb-3">Borrowed on {new Date(loan.borrowDate).toLocaleDateString()}</p>
-        
+
         <div className="flex items-center gap-3">
           <CountdownTimer dueDate={loan.dueDate} />
         </div>
       </div>
     </div>
-    
+
     {/* Actions */}
     <div className="bg-gray-900/50 px-5 py-3 border-t border-gray-700 flex justify-between items-center">
        <span className="text-xs text-gray-500 font-mono">ID: {loan._id.slice(-6)}</span>
@@ -121,7 +154,7 @@ const ActiveLoanCard = ({ loan }) => (
   </div>
 );
 
-const FineTicket = ({ loan, onPay }) => (
+const FineTicket: React.FC<FineTicketProps> = ({ loan, onPay }) => (
   <div className="bg-[#fff9c4] text-gray-800 rounded-lg p-4 shadow-lg border-2 border-dashed border-gray-400 relative transform rotate-1 hover:rotate-0 transition-transform max-w-sm mx-auto md:mx-0">
      <div className="absolute top-2 right-2 text-red-600 font-bold border-2 border-red-600 px-2 py-0.5 rounded text-xs uppercase transform -rotate-12">
         Violation
@@ -141,7 +174,7 @@ const FineTicket = ({ loan, onPay }) => (
            <span>${loan.fineAmount}</span>
         </div>
      </div>
-     <button 
+     <button
        onClick={() => {
          if(loan.isPaymentEnabled) onPay(loan);
        }}
@@ -153,9 +186,9 @@ const FineTicket = ({ loan, onPay }) => (
   </div>
 );
 
-const StudentBackpackView = ({ loans, loading, onPay, onRefresh }) => {
+const StudentBackpackView: React.FC<StudentBackpackViewProps> = ({ loans, loading, onPay, onRefresh }) => {
   const activeLoans = loans.filter(l => l.returnStatus !== 'Returned');
-  const fines = loans.filter(l => l.fineAmount > 0 && !l.isFinePaid);
+  const fines = loans.filter(l => l.fineAmount && Number(l.fineAmount) > 0 && !l.isFinePaid);
 
   if (loading) return <div className="text-center py-20 animate-pulse text-gray-500">Loading Backpack...</div>;
 
@@ -171,7 +204,7 @@ const StudentBackpackView = ({ loans, loading, onPay, onRefresh }) => {
             </h1>
             <p className="text-gray-400 mt-1">Active missions and time-sensitive tasks.</p>
           </div>
-          <button 
+          <button
             onClick={onRefresh}
             className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full text-cyan-400 transition"
             title="Refresh Status"
@@ -223,42 +256,41 @@ const StudentBackpackView = ({ loans, loading, onPay, onRefresh }) => {
   );
 };
 
-
 // --- Main Component ---
 
-export default function CirculationPage() {
+export default function CirculationPage(): JSX.Element {
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+
   // Data State
-  const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
+  const [records, setRecords] = useState<BorrowedRecord[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   // Filter/Sort State
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("All");
+
   // Header State
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const profileMenuRef = useRef(null);
+  const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // Edit Modal State
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [payingRecord, setPayingRecord] = useState(null);
+  const [editingRecord, setEditingRecord] = useState<BorrowedRecord | null>(null);
+  const [payingRecord, setPayingRecord] = useState<BorrowedRecord | null>(null);
 
   // --- Data Fetching ---
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get("/borrowed", { 
-        params: { limit: 1000 } 
+      const { data } = await api.get("/borrowed", {
+        params: { limit: 1000 }
       });
       const recs = data.records || data;
-      
+
       if (user?.role === 'student') {
          // Filter for student backpack
-         const myRecs = recs.filter(r => 
+         const myRecs = recs.filter((r: BorrowedRecord) =>
             r.studentId === user.rollNo || r.studentId === user.email || r.studentName === user.name
          );
          setRecords(myRecs);
@@ -278,8 +310,8 @@ export default function CirculationPage() {
 
   // --- Click Outside for Header ---
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
         setShowProfileMenu(false);
       }
     }
@@ -294,11 +326,11 @@ export default function CirculationPage() {
     const returned = records.filter(r => r.returnStatus === 'Returned').length;
     const overdue = records.filter(r => r.returnStatus === 'Overdue').length;
     const active = total - returned;
-    const totalFines = records.reduce((acc, curr) => acc + (curr.fineAmount || 0), 0);
-    const unpaidFines = records.filter(r => !r.isFinePaid).reduce((acc, curr) => acc + (curr.fineAmount || 0), 0);
-    
+    const totalFines = records.reduce((acc, curr) => acc + (Number(curr.fineAmount) || 0), 0);
+    const unpaidFines = records.filter(r => !r.isFinePaid).reduce((acc, curr) => acc + (Number(curr.fineAmount) || 0), 0);
+
     // Simple timeline logic
-    const timelineMap = {};
+    const timelineMap: Record<string, number> = {};
     const today = new Date();
     for(let i=6; i>=0; i--) {
       const d = new Date(today);
@@ -325,7 +357,7 @@ export default function CirculationPage() {
   const filteredRecords = useMemo(() => {
     if (user?.role === 'student') return records; // Student view handles its own filtering
     return records.filter(r => {
-      const matchesSearch = 
+      const matchesSearch =
         r.bookTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.studentId?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -335,44 +367,45 @@ export default function CirculationPage() {
   }, [records, searchTerm, statusFilter, user]);
 
   // --- Actions ---
-  const showToast = (msg, type='success') => {
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleTogglePayment = async (record) => {
+  const handleTogglePayment = async (record: BorrowedRecord) => {
     try {
       const { data } = await api.patch(`/borrowed/${record._id}/toggle-payment`);
       // Update local state
       setRecords(prev => prev.map(r => r._id === record._id ? { ...r, isPaymentEnabled: data.isPaymentEnabled } : r));
       showToast(data.isPaymentEnabled ? "Payment Unlocked for Student" : "Payment Locked", "success");
-    } catch (err) {
+    } catch (err: any) {
       const msg = err.response?.data?.message || "Failed to toggle payment";
       showToast(msg, "error");
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm("Permanently delete this record?")) return;
-    try { await api.delete(`/borrowed/${id}`); showToast("Record deleted"); fetchData(); } 
+    try { await api.delete(`/borrowed/${id}`); showToast("Record deleted"); fetchData(); }
     catch { showToast("Failed to delete", "error"); }
   };
 
-  const handleUpdate = async (e) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    try { await api.put(`/borrowed/${editingRecord._id}`, editingRecord); showToast("Updated"); setEditingRecord(null); fetchData(); } 
-    catch { showToast("Failed to update", "error"); } 
+    if (!editingRecord) return;
+    try { await api.put(`/borrowed/${editingRecord._id}`, editingRecord); showToast("Updated"); setEditingRecord(null); fetchData(); }
+    catch { showToast("Failed to update", "error"); }
   };
 
   // --- Render ---
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans selection:bg-cyan-500/30">
       {toast && <div className={`fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-2xl z-50 border ${toast.type === 'error' ? 'bg-red-900/90 border-red-700 text-red-100' : 'bg-cyan-900/90 border-cyan-700 text-cyan-100'}`}>{toast.msg}</div>}
-      
+
       <Header navigate={navigate} showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu} profileMenuRef={profileMenuRef} />
 
       <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        
+
         {user?.role === 'student' ? (
           <StudentBackpackView loans={records} loading={loading} onPay={setPayingRecord} onRefresh={fetchData} />
         ) : (
@@ -391,10 +424,10 @@ export default function CirculationPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-               <StatCard title="Active Loans" value={stats.active} icon={<BookOpen />} color="text-yellow-500" />
-               <StatCard title="Overdue Books" value={stats.overdue} icon={<AlertCircle />} color="text-red-500" subtext={`${((stats.overdue/stats.total)*100).toFixed(1)}% of total`} />
-               <StatCard title="Returned On-Time" value={stats.returned} icon={<CheckCircle />} color="text-green-500" />
-               <StatCard title="Outstanding Fines" value={`$${stats.unpaidFines}`} icon={<DollarSign />} color="text-orange-500" />
+               <StatCard title="Active Loans" value={stats.active || 0} icon={<BookOpen />} color="text-yellow-500" />
+               <StatCard title="Overdue Books" value={stats.overdue || 0} icon={<AlertCircle />} color="text-red-500" subtext={`${stats.total ? ((stats.overdue / stats.total) * 100).toFixed(1) : 0}% of total`} />
+               <StatCard title="Returned On-Time" value={stats.returned || 0} icon={<CheckCircle />} color="text-green-500" />
+               <StatCard title="Outstanding Fines" value={`$${stats.unpaidFines || 0}`} icon={<DollarSign />} color="text-orange-500" />
             </div>
 
             {/* Admin Table Controls & Grid would go here (Simplified for brevity, reusing existing structure) */}
@@ -417,8 +450,8 @@ export default function CirculationPage() {
                               <td className="px-6 py-4 text-center"><Badge type={r.returnStatus}>{r.returnStatus}</Badge></td>
                               <td className="px-6 py-4 text-right flex justify-end gap-2">
                                  {r.returnStatus !== 'Returned' && (
-                                   <button 
-                                     onClick={() => handleTogglePayment(r)} 
+                                   <button
+                                     onClick={() => handleTogglePayment(r)}
                                      className={`p-2 rounded transition ${r.isPaymentEnabled ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
                                      title={r.isPaymentEnabled ? "Payment Enabled (Click to Lock)" : "Unlock Payment for Student"}
                                    >
@@ -437,7 +470,7 @@ export default function CirculationPage() {
           </div>
         )}
       </main>
-      
+
       {/* Re-using Edit Modal logic for Admin (omitted details for brevity, assumed consistent with previous) */}
       {editingRecord && (
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -445,7 +478,7 @@ export default function CirculationPage() {
                <h3 className="text-lg font-bold text-white mb-4">Edit Record</h3>
                <form onSubmit={handleUpdate} className="space-y-4">
                   <input type="date" value={editingRecord.dueDate?.slice(0, 10)} onChange={e => setEditingRecord({...editingRecord, dueDate: e.target.value})} className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white" />
-                  <select value={editingRecord.returnStatus} onChange={e => setEditingRecord({...editingRecord, returnStatus: e.target.value})} className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white"><option>Not Returned</option><option>Returned</option><option>Overdue</option></select>
+                   <select value={editingRecord.returnStatus} onChange={e => setEditingRecord({...editingRecord, returnStatus: e.target.value as "Borrowed" | "Returned" | "Overdue"})} className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white"><option>Not Returned</option><option>Returned</option><option>Overdue</option></select>
                   <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingRecord(null)} className="px-4 py-2 text-gray-400">Cancel</button><button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded">Save</button></div>
                </form>
             </div>
@@ -453,10 +486,10 @@ export default function CirculationPage() {
       )}
 
       {payingRecord && (
-        <PayFineModal 
-          record={payingRecord} 
-          onClose={() => setPayingRecord(null)} 
-          onSuccess={fetchData} 
+        <PayFineModal
+          record={payingRecord}
+          onClose={() => setPayingRecord(null)}
+          onSuccess={fetchData}
         />
       )}
     </div>

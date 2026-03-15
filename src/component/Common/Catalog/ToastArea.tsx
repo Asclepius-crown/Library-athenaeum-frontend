@@ -1,5 +1,17 @@
-// ToastArea.jsx
-export default function ToastArea({ toasts }) {
+// ToastArea.tsx
+import React from 'react';
+
+interface Toast {
+  id: string;
+  type: 'success' | 'error' | 'info';
+  message: string;
+}
+
+interface ToastAreaProps {
+  toasts: Toast[];
+}
+
+export default function ToastArea({ toasts }: ToastAreaProps) {
   return (
     <div className="fixed top-4 right-4 z-50 space-y-2">
       {toasts.map((t) => (

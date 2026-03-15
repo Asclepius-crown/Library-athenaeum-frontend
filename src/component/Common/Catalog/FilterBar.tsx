@@ -1,4 +1,24 @@
-// FilterBar.jsx
+// FilterBar.tsx
+import React from 'react';
+
+interface SortOption {
+  label: string;
+}
+
+interface FilterBarProps {
+  genres: string[];
+  sortOptions: SortOption[];
+  selectedGenre: string;
+  setSelectedGenre: (genre: string) => void;
+  selectedAvailability: string;
+  setSelectedAvailability: (availability: string) => void;
+  selectedSortIndex: number;
+  setSelectedSortIndex: (index: number) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  setCurrentPage: (page: number) => void;
+}
+
 export default function FilterBar({
   genres,
   sortOptions,
@@ -11,7 +31,7 @@ export default function FilterBar({
   searchTerm,
   setSearchTerm,
   setCurrentPage
-}) {
+}: FilterBarProps) {
   return (
     <div className="flex flex-wrap gap-4 mb-6">
       <select

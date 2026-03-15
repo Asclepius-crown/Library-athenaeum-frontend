@@ -1,6 +1,14 @@
-// BulkImportModal.jsx
-import BulkBookUpload from "../../Admin/BulkBookUpload";
-export default function BulkImportModal({ show, onClose, fetchBooks }) {
+// BulkImportModal.tsx
+import React from 'react';
+import BulkBookUpload from "../../Admin/BulkBookUpload.tsx";
+
+interface BulkImportModalProps {
+  show: boolean;
+  onClose: () => void;
+  fetchBooks: () => void;
+}
+
+export default function BulkImportModal({ show, onClose, fetchBooks }: BulkImportModalProps) {
   if (!show) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">

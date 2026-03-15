@@ -1,16 +1,38 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState } from "react";
-import api from "../api/axiosClient";   
+import api from "../api/axiosClient";
+import { StudentProfile } from "../types/index";
 
-const StudentContext = createContext();
-export const useStudents = () => useContext(StudentContext);
+interface StudentContextType {
+  students: StudentProfile[];
+  loading: boolean;
+  error: string;
+  fetchStudents: () => Promise<void>;
+  addStudent: (student: StudentProfile) => Promise<void>;
+  updateStudent: (rollNo: string, updatedData: Partial<StudentProfile>) => Promise<void>;
+  deleteStudent: (rollNo: string) => Promise<void>;
+  fetchStudentById: (id: string) => Promise<StudentProfile | undefined>;
+}
 
-export const StudentProvider = ({ children }) => {
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+const StudentContext = createContext<StudentContextType | undefined>(undefined);
+export const useStudents = () => {
+  const context = useContext(StudentContext);
+  if (!context) {
+    throw new Error("useStudents must be used within a StudentProvider");
+  }
+  return context;
+};
 
-  const fetchStudents = async () => {
+interface StudentProviderProps {
+  children: React.ReactNode;
+}
+
+export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) => {
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+
+  const fetchStudents = async (): Promise<void> => {
     setLoading(true);
     try {
       const res = await api.get("/students");
@@ -21,7 +43,7 @@ export const StudentProvider = ({ children }) => {
     setLoading(false);
   };
 
-  const addStudent = async (student) => {
+  const addStudent = async (student: StudentProfile): Promise<void> => {
     try {
       const res = await api.post("/students", student);
       setStudents((prev) => [...prev, res.data]);
@@ -30,7 +52,7 @@ export const StudentProvider = ({ children }) => {
     }
   };
 
-  const updateStudent = async (rollNo, updatedData) => {
+  const updateStudent = async (rollNo: string, updatedData: Partial<StudentProfile>): Promise<void> => {
     try {
       const res = await api.put(`/students/${rollNo}`, updatedData);
       setStudents((prev) => prev.map((s) => s.rollNo === rollNo ? res.data : s));
@@ -39,7 +61,7 @@ export const StudentProvider = ({ children }) => {
     }
   };
 
-  const deleteStudent = async (rollNo) => {
+  const deleteStudent = async (rollNo: string): Promise<void> => {
     if (!window.confirm("Delete student?")) return;
     try {
       await api.delete(`/students/${rollNo}`);
@@ -49,7 +71,7 @@ export const StudentProvider = ({ children }) => {
     }
   };
 
-  const fetchStudentById = async (id) => {
+  const fetchStudentById = async (id: string): Promise<StudentProfile | undefined> => {
     setLoading(true);
     try {
       const res = await api.get(`/students/${id}`);

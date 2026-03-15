@@ -1,6 +1,7 @@
+// SkeletonCard.tsx
 import React from 'react';
 
-const SkeletonCard = () => {
+const SkeletonCard: React.FC = () => {
   return (
     <div className="bg-gray-900 rounded shadow flex flex-col justify-between overflow-hidden h-full animate-pulse">
       {/* Image Skeleton */}

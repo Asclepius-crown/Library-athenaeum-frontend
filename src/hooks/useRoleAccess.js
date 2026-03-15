@@ -1,5 +1,5 @@
 // src/hooks/useRoleAccess.js
-import { useAuth } from '../component/AuthContext.jsx';
+import { useAuth } from '../context/AuthContext';
 
 export function useRoleAccess(requiredRole) {
   const { user, isAuthenticated } = useAuth();

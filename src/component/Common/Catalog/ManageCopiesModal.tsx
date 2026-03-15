@@ -1,15 +1,27 @@
+// ManageCopiesModal.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Pencil, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import api from '../../../api/axiosClient';
 import useToast from './useToast';
+import { GroupedBook, Book } from '../../../types/index';
+import ConfirmModal from '../../../components/Common/ConfirmModal';
 
-export default function ManageCopiesModal({ show, onClose, groupedBook, fetchBooks }) {
+interface ManageCopiesModalProps {
+  show: boolean;
+  onClose: () => void;
+  groupedBook: GroupedBook | null;
+  fetchBooks: () => void;
+}
+
+export default function ManageCopiesModal({ show, onClose, groupedBook, fetchBooks }: ManageCopiesModalProps) {
   const { addToast } = useToast();
-  const [copies, setCopies] = useState([]);
-  const [loadingCopies, setLoadingCopies] = useState(false);
-  const [editingCopyId, setEditingCopyId] = useState(null);
-  const [editedCopy, setEditedCopy] = useState({});
-  const [newCopyData, setNewCopyData] = useState({});
+  const [copies, setCopies] = useState<Book[]>([]);
+  const [loadingCopies, setLoadingCopies] = useState<boolean>(false);
+  const [editingCopyId, setEditingCopyId] = useState<string | null>(null);
+  const [editedCopy, setEditedCopy] = useState<Partial<Book>>({});
+  const [newCopyData, setNewCopyData] = useState<Partial<Book>>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteCopyId, setDeleteCopyId] = useState<string | null>(null);
 
   const groupedIdString = groupedBook ? encodeURIComponent(JSON.stringify(groupedBook._id)) : "";
 
@@ -37,7 +49,7 @@ export default function ManageCopiesModal({ show, onClose, groupedBook, fetchBoo
     }
   }, [show, groupedBook, fetchCopies]);
 
-  const handleEditCopyClick = (copy) => {
+  const handleEditCopyClick = (copy: Book) => {
     setEditingCopyId(copy._id);
     setEditedCopy({ ...copy });
   };
@@ -55,16 +67,23 @@ export default function ManageCopiesModal({ show, onClose, groupedBook, fetchBoo
     }
   };
 
-  const handleDeleteCopy = async (copyId) => {
-    if (!window.confirm("Are you sure you want to delete this individual copy?")) return;
+  const handleDeleteCopy = (copyId: string) => {
+    setDeleteCopyId(copyId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteCopyId) return;
     try {
-      await api.delete(`/books/${copyId}`);
+      await api.delete(`/books/${deleteCopyId}`);
       addToast("Copy deleted successfully", "success");
       fetchCopies();
       fetchBooks();
     } catch {
       addToast("Failed to delete copy", "error");
     }
+    setShowDeleteConfirm(false);
+    setDeleteCopyId(null);
   };
 
   const handleAddCopy = async () => {
@@ -80,7 +99,7 @@ export default function ManageCopiesModal({ show, onClose, groupedBook, fetchBoo
         status: newCopyData.status || 'Available',
         borrower: '',
         dueDate: null
-      };
+      } as Omit<Book, '_id' | 'totalCopies' | 'availableCopies' | 'derivedStatus' | 'copyIds'> & { _id?: string; totalCopies?: number; availableCopies?: number; derivedStatus?: string; copyIds?: string[] };
       
       await api.post('/books', newBookCopy);
       addToast("New copy added successfully", "success");
@@ -125,7 +144,7 @@ export default function ManageCopiesModal({ show, onClose, groupedBook, fetchBoo
                             <label className="block text-xs text-gray-400">Status</label>
                             <select
                               value={editedCopy.status}
-                              onChange={(e) => setEditedCopy(prev => ({ ...prev, status: e.target.value }))}
+                              onChange={(e) => setEditedCopy(prev => ({ ...prev, status: e.target.value as "Available" | "Borrowed" }))}
                               className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white text-sm"
                             >
                               <option value="Available">Available</option>
@@ -197,7 +216,7 @@ export default function ManageCopiesModal({ show, onClose, groupedBook, fetchBoo
               />
               <select
                 value={newCopyData.status || 'Available'}
-                onChange={(e) => setNewCopyData(prev => ({ ...prev, status: e.target.value }))}
+                onChange={(e) => setNewCopyData(prev => ({ ...prev, status: e.target.value as "Available" | "Borrowed" }))}
                 className="bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"
               >
                 <option value="Available">Available</option>
@@ -217,6 +236,13 @@ export default function ManageCopiesModal({ show, onClose, groupedBook, fetchBoo
           </button>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDelete}
+        title="Delete Copy"
+        message="Are you sure you want to delete this individual copy? This action cannot be undone."
+      />
     </div>
   );
 }

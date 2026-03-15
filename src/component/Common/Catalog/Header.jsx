@@ -1,7 +1,7 @@
 // Header.jsx
 import logo from "../../../assets/logo.jpg";
 import { User, Users, Library, Database, BookOpen, LogOut, Pencil, MonitorPlay } from "lucide-react";
-import { useAuth } from "../../AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 
 export default function Header({
   navigate,
@@ -9,7 +9,7 @@ export default function Header({
   setShowProfileMenu,
   profileMenuRef,
 }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <header className="w-full pt-6 px-4 md:px-12 relative z-40">
@@ -133,7 +133,7 @@ export default function Header({
 
                 <button 
                   onClick={() => {
-                    localStorage.removeItem("token");
+                    logout();
                     setShowProfileMenu(false);
                     window.location.href = "/"; // Force full reload to clear context state cleanly
                   }}
